@@ -49,6 +49,7 @@ def set_measuring(bot, update, args):
     if measuring_system in MEASURING_SYSTEMS:
         global MEASURING_SYSTEM
         MEASURING_SYSTEM = MEASURING_SYSTEMS[measuring_system]
+        update.message.reply_text(f'Changed your measuring system to {MEASURING_SYSTEM["Name"]}')
     else:
         update.message.reply_text("Cannot find measuring system. Did you spell it right?")
 
@@ -75,9 +76,10 @@ Humidity at {text_location}: {humidity}
         convert_temp = temp.get('temp')
         convert_wind = wind.get('speed')
         convert_humidity = humidity
-        update.message.reply_text(f'Temperature, {MEASURING_SYSTEM["temperature"]}: {str(convert_temp)}')
-        update.message.reply_text(f'Wind speed, {MEASURING_SYSTEM["speed"]}: {str(convert_wind)}')
-        update.message.reply_text(f'Humidity, %: {str(convert_humidity)}')
+        update.message.reply_text(f'''Temperature, {MEASURING_SYSTEM["temperature"]}: {str(convert_temp)}
+Wind speed, {MEASURING_SYSTEM["speed"]}: {str(convert_wind)}
+Humidity, %: {str(convert_humidity)}
+''')
     except:
         update.message.reply_text("Cannot find location you requested. Did you spell it right?")
 
