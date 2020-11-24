@@ -5,15 +5,17 @@
 For determine weather using OpenWeatherMap API.
 Wrapper telegram bot is python-telegram-bot (https://github.com/python-telegram-bot)
 """
-
-from telegram import ParseMode, MessageEntity, ChatAction, Update
-from telegram.error import BadRequest
-from telegram.ext import CommandHandler, Updater, MessageHandler, Filters, CallbackContext
 import logging
+import os
+
 import pyowm
+
+from telegram.ext import CommandHandler, Updater
 
 
 TOKEN = "1307202527:AAHHqwfSTs-hPyKMyFrAhCZDJCIzLlU13Ic"
+USE_WEB_HOOKS = True
+PORT = int(os.environ.get('PORT', '8443'))
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -56,16 +58,37 @@ def weather(bot, update, args):
         text_wind = str(convert_wind)
         text_humidity = str(convert_humidity)
         update.message.reply_text("Temperature, celsius: {}".format(text_temp))
-        update.message.reply_text("Wind speed, m/s: {}".format(text_wind))
+        update.message.reply_text("Wind speed, m/s: {}".fogrmat(text_wind))
         update.message.reply_text("Humidity, %: {}".format(text_humidity))
     except:
         update.message.reply_text("Cannot find location you requested. Did you spell it right?")
 
 
+def polling_bot(updater):
+    # Start the Bot
+    updater.start_polling()
+
+    # Run the bot until you press Ctrl-C or the process receives SIGINT,
+    # SIGTERM or SIGABRT. This should be used most of the time, since
+    # start_polling() is non-blocking and will stop the bot gracefully.
+    updater.idle()
+
+
+def webhook_bot(updater):
+    # start the bot with webhook
+    updater.start_webhook(listen="0.0.0.0",
+                          port=PORT,
+                          url_path=TOKEN)
+    # set webhook to our heroku app url
+    updater.bot.set_webhook("https://weather-bot-122.herokuapp.com/" + TOKEN)
+
+    updater.idle()
+
+
 def main():
     """Start the bot."""
     # Create the EventHandler and pass it your bot's token.
-    updater = Updater(TOKEN, use_context=False)
+    updater = Updater(TOKEN)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -78,13 +101,10 @@ def main():
     # log all errors
     dp.add_error_handler(error)
 
-    # Start the Bot
-    updater.start_polling()
-
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
-    updater.idle()
+    if USE_WEB_HOOKS:
+        webhook_bot(updater)
+    else:
+        polling_bot(updater)
 
 
 if __name__ == '__main__':
