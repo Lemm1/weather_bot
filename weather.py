@@ -1,66 +1,90 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-""" Telegram bot for determine current weather at certain city.
-For determine weather using OpenWeatherMap API.
-Wrapper telegram bot is python-telegram-bot (https://github.com/python-telegram-bot)
-"""
 import logging
 import os
 
 import pyowm
 
-from telegram.ext import CommandHandler, Updater
+from telegram import Update
+from telegram.ext import CommandHandler, Updater, CallbackContext
 
 
 TOKEN = "1307202527:AAHHqwfSTs-hPyKMyFrAhCZDJCIzLlU13Ic"
 PORT = int(os.environ.get('PORT', '8443'))
+MEASURING_SYSTEMS = {"SI": {"name": "International System of Units", "temperature": "celsius", "speed": "meters_sec",
+                            "display_speed": "m/s"}, "customary": {"name": "United States customary units",
+                                                                   "temperature": "fahrenheit", "speed": "miles_hour",
+                                                                   "display_speed": "mi/h"}}
+MEASURING_SYSTEM = MEASURING_SYSTEMS["SI"]
 
 # Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def start(bot, update):
+def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
+    logger.info(f'Received start command from chat {update.message.chat_id}')
     update.message.reply_text('Welcome, to get instructions on how to use bot type /help')
 
 
-def help(bot, update):
+def bot_help(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Just type, for example, /weather Lviv')
+    logger.info(f'Received help command from chat {update.message.chat_id}')
+    update.message.reply_text(f'''Your measuring system is set to {MEASURING_SYSTEM["name"]}
+Available measuring systems:
+    SI - International System of Units, uses celsius and meters per second 
+    customary - United States customary units, uses fahrenheits and miles per hour
+To change measuring system type /measuring SI or /measuring customary
+
+To check weather just type /weather and location for example /weather Lviv''')
+
+
+def set_measuring(update: Update, context: CallbackContext) -> None:
+    logger.info(f'Received change measuring command from chat {update.message.chat_id}')
+    measuring_system = "".join(str(x) for x in context.args)
+    if measuring_system in MEASURING_SYSTEMS:
+        global MEASURING_SYSTEM
+        MEASURING_SYSTEM = MEASURING_SYSTEMS[measuring_system]
+        update.message.reply_text(f'Changed your measuring system to {MEASURING_SYSTEM["name"]}')
+        logger.info(f'Changed measuring system to {MEASURING_SYSTEM["name"]}for chat {update.message.chat_id}')
+
+    else:
+        update.message.reply_text("Cannot find measuring system. Did you spell it right?")
+        logger.warning(f'Failed to change measuring system to {measuring_system} for chat {update.message.chat_id}')
 
 
 def error(bot, update, error):
     """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, error)
+    logger.error('Update "%s" caused error "%s"', update, error)
 
 
-def weather(bot, update, args):
+def weather(update: Update, context: CallbackContext) -> None:
     """Define weather at certain location"""
+    logger.info(f'Received weather command from chat {update.message.chat_id}')
     owm = pyowm.OWM('e81cde1ad29454eb6358e91ec760b09f')
+    text_location = "".join(str(x) for x in context.args)
     try:
-        text_location = "".join(str(x) for x in args)
-        observation = owm.weather_manager().weather_at_place(text_location)
-        w = observation.weather
+        w = owm.weather_manager().weather_at_place(text_location).weather
         humidity = w.humidity
-        wind = w.wind(unit='meters_sec')
-        temp = w.temperature(unit='celsius')
-        print(temp)
-        print(wind)
+        wind = w.wind(unit=MEASURING_SYSTEM["speed"])
+        temp = w.temperature(unit=MEASURING_SYSTEM["temperature"])
+        logger.info(f'''
+        Temperature at {text_location}: {temp}
+Wind at {text_location}: {wind}
+Humidity at {text_location}: {humidity}
+        ''')
         convert_temp = temp.get('temp')
         convert_wind = wind.get('speed')
         convert_humidity = humidity
-        text_temp = str(convert_temp)
-        text_wind = str(convert_wind)
-        text_humidity = str(convert_humidity)
-        update.message.reply_text("Temperature, celsius: {}".format(text_temp))
-        update.message.reply_text("Wind speed, m/s: {}".format(text_wind))
-        update.message.reply_text("Humidity, %: {}".format(text_humidity))
+        update.message.reply_text(f'''Temperature, {MEASURING_SYSTEM["temperature"]}: {str(convert_temp)}
+Wind speed, {MEASURING_SYSTEM["display_speed"]}: {str(convert_wind)}
+Humidity, %: {str(convert_humidity)}
+''')
     except:
         update.message.reply_text("Cannot find location you requested. Did you spell it right?")
+        logger.warning(f'Failed to get weather for {text_location} for chat {update.message.chat_id}')
 
 
 def polling_bot(updater):
@@ -89,15 +113,16 @@ def webhook_bot(updater):
 def main(use_webhooks):
     logger.info("starting bot")
     # Create the EventHandler and pass it your bot's token.
-    updater = Updater(TOKEN, use_context=False)
+    updater = Updater(TOKEN)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CommandHandler("help", bot_help))
     dp.add_handler(CommandHandler("weather", weather, pass_args=True))
+    dp.add_handler(CommandHandler("measuring", set_measuring, pass_args=True))
 
     # log all errors
     dp.add_error_handler(error)
