@@ -15,6 +15,11 @@ from telegram.ext import CommandHandler, Updater
 
 TOKEN = "1307202527:AAHHqwfSTs-hPyKMyFrAhCZDJCIzLlU13Ic"
 PORT = int(os.environ.get('PORT', '8443'))
+MEASURING_SYSTEMS = {"SI": { "name":"International System of Units", "temperature":"celsius", "speed":"meters_sec" },
+                     "customary": { "name": "United States customary units", "temperature":"fahrenheit", "speed":"miles_hour" }}
+MEASURING_SYSTEM = MEASURING_SYSTEMS["SI"]
+
+
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -30,7 +35,22 @@ def start(bot, update):
 
 def help(bot, update):
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Just type, for example, /weather Lviv')
+    update.message.reply_text(f'''Your measuring system is set to {MEASURING_SYSTEM["Name"]}
+Available measuring systems:
+    SI - International System of Units, uses celsius and meters per second 
+    customary - United States customary units, uses fahrenheits and miles per hour
+To change measuring system type /measuring SI or /measuring customary
+
+To check weather just type /weather and location for example /weather Lviv''')
+
+
+def set_measuring(bot, update, args):
+    measuring_system = "".join(str(x) for x in args)
+    if measuring_system in MEASURING_SYSTEMS:
+        global MEASURING_SYSTEM
+        MEASURING_SYSTEM = MEASURING_SYSTEMS[measuring_system]
+    else:
+        update.message.reply_text("Cannot find measuring system. Did you spell it right?")
 
 
 def error(bot, update, error):
@@ -43,22 +63,21 @@ def weather(bot, update, args):
     owm = pyowm.OWM('e81cde1ad29454eb6358e91ec760b09f')
     try:
         text_location = "".join(str(x) for x in args)
-        observation = owm.weather_manager().weather_at_place(text_location)
-        w = observation.weather
+        w = owm.weather_manager().weather_at_place(text_location).weather
         humidity = w.humidity
-        wind = w.wind(unit='meters_sec')
-        temp = w.temperature(unit='celsius')
-        print(temp)
-        print(wind)
+        wind = w.wind(unit=MEASURING_SYSTEM["speed"])
+        temp = w.temperature(unit=MEASURING_SYSTEM["temperature"])
+        logger.info(f'''
+        Temperature at {text_location}: {temp}
+Wind at {text_location}: {wind}
+Humidity at {text_location}: {humidity}
+        ''')
         convert_temp = temp.get('temp')
         convert_wind = wind.get('speed')
         convert_humidity = humidity
-        text_temp = str(convert_temp)
-        text_wind = str(convert_wind)
-        text_humidity = str(convert_humidity)
-        update.message.reply_text("Temperature, celsius: {}".format(text_temp))
-        update.message.reply_text("Wind speed, m/s: {}".format(text_wind))
-        update.message.reply_text("Humidity, %: {}".format(text_humidity))
+        update.message.reply_text(f'Temperature, {MEASURING_SYSTEM["temperature"]}: {str(convert_temp)}')
+        update.message.reply_text(f'Wind speed, {MEASURING_SYSTEM["speed"]}: {str(convert_wind)}')
+        update.message.reply_text(f'Humidity, %: {str(convert_humidity)}')
     except:
         update.message.reply_text("Cannot find location you requested. Did you spell it right?")
 
@@ -98,6 +117,7 @@ def main(use_webhooks):
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("weather", weather, pass_args=True))
+    dp.add_handler(CommandHandler("measuring", set_measuring, pass_args=True))
 
     # log all errors
     dp.add_error_handler(error)
