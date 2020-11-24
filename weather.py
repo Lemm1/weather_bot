@@ -57,7 +57,7 @@ def weather(bot, update, args):
         text_wind = str(convert_wind)
         text_humidity = str(convert_humidity)
         update.message.reply_text("Temperature, celsius: {}".format(text_temp))
-        update.message.reply_text("Wind speed, m/s: {}".fogrmat(text_wind))
+        update.message.reply_text("Wind speed, m/s: {}".format(text_wind))
         update.message.reply_text("Humidity, %: {}".format(text_humidity))
     except:
         update.message.reply_text("Cannot find location you requested. Did you spell it right?")
