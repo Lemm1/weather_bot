@@ -1,1 +1,1 @@
-worker: python weather.py
+web: python weather.py --use_webhook 1

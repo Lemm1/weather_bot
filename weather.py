@@ -14,7 +14,6 @@ from telegram.ext import CommandHandler, Updater
 
 
 TOKEN = "1307202527:AAHHqwfSTs-hPyKMyFrAhCZDJCIzLlU13Ic"
-USE_WEB_HOOKS = True
 PORT = int(os.environ.get('PORT', '8443'))
 
 # Enable logging
@@ -65,6 +64,7 @@ def weather(bot, update, args):
 
 
 def polling_bot(updater):
+    logger.info("Start polling")
     # Start the Bot
     updater.start_polling()
 
@@ -75,6 +75,7 @@ def polling_bot(updater):
 
 
 def webhook_bot(updater):
+    logger.info("Starting webhook")
     # start the bot with webhook
     updater.start_webhook(listen="0.0.0.0",
                           port=PORT,
@@ -85,10 +86,10 @@ def webhook_bot(updater):
     updater.idle()
 
 
-def main():
-    """Start the bot."""
+def main(use_webhooks):
+    logger.info("starting bot")
     # Create the EventHandler and pass it your bot's token.
-    updater = Updater(TOKEN)
+    updater = Updater(TOKEN, use_context=False)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -101,11 +102,16 @@ def main():
     # log all errors
     dp.add_error_handler(error)
 
-    if USE_WEB_HOOKS:
+    if use_webhooks:
         webhook_bot(updater)
     else:
         polling_bot(updater)
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--use_webhooks', required=False, help='Use webhooks')
+    args = parser.parse_args()
+    main(use_webhooks=args.use_webhooks)
