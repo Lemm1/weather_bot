@@ -12,9 +12,10 @@ from telegram.ext import CommandHandler, Updater, CallbackContext
 
 TOKEN = "1307202527:AAHHqwfSTs-hPyKMyFrAhCZDJCIzLlU13Ic"
 PORT = int(os.environ.get('PORT', '8443'))
-MEASURING_SYSTEMS = {"SI": {"name": "International System of Units", "temperature": "celsius", "speed": "meters_sec"},
-                     "customary": {"name": "United States customary units", "temperature": "fahrenheit",
-                                   "speed": "miles_hour"}}
+MEASURING_SYSTEMS = {"SI": {"name": "International System of Units", "temperature": "celsius", "speed": "meters_sec",
+                            "display_speed": "m/s"}, "customary": {"name": "United States customary units",
+                                                                   "temperature": "fahrenheit", "speed": "miles_hour",
+                                                                   "display_speed": "mi/h"}}
 MEASURING_SYSTEM = MEASURING_SYSTEMS["SI"]
 
 # Enable logging
@@ -78,7 +79,7 @@ Humidity at {text_location}: {humidity}
         convert_wind = wind.get('speed')
         convert_humidity = humidity
         update.message.reply_text(f'''Temperature, {MEASURING_SYSTEM["temperature"]}: {str(convert_temp)}
-Wind speed, {MEASURING_SYSTEM["speed"]}: {str(convert_wind)}
+Wind speed, {MEASURING_SYSTEM["display_speed"]}: {str(convert_wind)}
 Humidity, %: {str(convert_humidity)}
 ''')
     except:
