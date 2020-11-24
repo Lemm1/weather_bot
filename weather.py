@@ -1,41 +1,37 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-""" Telegram bot for determine current weather at certain city.
-For determine weather using OpenWeatherMap API.
-Wrapper telegram bot is python-telegram-bot (https://github.com/python-telegram-bot)
-"""
 import logging
 import os
 
 import pyowm
 
-from telegram.ext import CommandHandler, Updater
+from telegram import Update
+from telegram.ext import CommandHandler, Updater, CallbackContext
 
 
 TOKEN = "1307202527:AAHHqwfSTs-hPyKMyFrAhCZDJCIzLlU13Ic"
 PORT = int(os.environ.get('PORT', '8443'))
-MEASURING_SYSTEMS = {"SI": { "name":"International System of Units", "temperature":"celsius", "speed":"meters_sec" },
-                     "customary": { "name": "United States customary units", "temperature":"fahrenheit", "speed":"miles_hour" }}
+MEASURING_SYSTEMS = {"SI": {"name": "International System of Units", "temperature": "celsius", "speed": "meters_sec"},
+                     "customary": {"name": "United States customary units", "temperature": "fahrenheit",
+                                   "speed": "miles_hour"}}
 MEASURING_SYSTEM = MEASURING_SYSTEMS["SI"]
 
-
-
 # Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def start(bot, update):
+def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
+    logger.info(f'Received start command from chat {update.message.chat_id}')
     update.message.reply_text('Welcome, to get instructions on how to use bot type /help')
 
 
-def bot_help(bot, update):
+def bot_help(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /help is issued."""
-    update.message.reply_text(f'''Your measuring system is set to {MEASURING_SYSTEM["Name"]}
+    logger.info(f'Received help command from chat {update.message.chat_id}')
+    update.message.reply_text(f'''Your measuring system is set to {MEASURING_SYSTEM["name"]}
 Available measuring systems:
     SI - International System of Units, uses celsius and meters per second 
     customary - United States customary units, uses fahrenheits and miles per hour
@@ -44,26 +40,31 @@ To change measuring system type /measuring SI or /measuring customary
 To check weather just type /weather and location for example /weather Lviv''')
 
 
-def set_measuring(bot, update, args):
-    measuring_system = "".join(str(x) for x in args)
+def set_measuring(update: Update, context: CallbackContext) -> None:
+    logger.info(f'Received change measuring command from chat {update.message.chat_id}')
+    measuring_system = "".join(str(x) for x in context.args)
     if measuring_system in MEASURING_SYSTEMS:
         global MEASURING_SYSTEM
         MEASURING_SYSTEM = MEASURING_SYSTEMS[measuring_system]
-        update.message.reply_text(f'Changed your measuring system to {MEASURING_SYSTEM["Name"]}')
+        update.message.reply_text(f'Changed your measuring system to {MEASURING_SYSTEM["name"]}')
+        logger.info(f'Changed measuring system to {MEASURING_SYSTEM["name"]}for chat {update.message.chat_id}')
+
     else:
         update.message.reply_text("Cannot find measuring system. Did you spell it right?")
+        logger.warning(f'Failed to change measuring system to {measuring_system} for chat {update.message.chat_id}')
 
 
 def error(bot, update, error):
     """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, error)
+    logger.error('Update "%s" caused error "%s"', update, error)
 
 
-def weather(bot, update, args):
+def weather(update: Update, context: CallbackContext) -> None:
     """Define weather at certain location"""
+    logger.info(f'Received weather command from chat {update.message.chat_id}')
     owm = pyowm.OWM('e81cde1ad29454eb6358e91ec760b09f')
+    text_location = "".join(str(x) for x in context.args)
     try:
-        text_location = "".join(str(x) for x in args)
         w = owm.weather_manager().weather_at_place(text_location).weather
         humidity = w.humidity
         wind = w.wind(unit=MEASURING_SYSTEM["speed"])
@@ -82,6 +83,7 @@ Humidity, %: {str(convert_humidity)}
 ''')
     except:
         update.message.reply_text("Cannot find location you requested. Did you spell it right?")
+        logger.warning(f'Failed to get weather for {text_location} for chat {update.message.chat_id}')
 
 
 def polling_bot(updater):
@@ -110,7 +112,7 @@ def webhook_bot(updater):
 def main(use_webhooks):
     logger.info("starting bot")
     # Create the EventHandler and pass it your bot's token.
-    updater = Updater(TOKEN, use_context=False)
+    updater = Updater(TOKEN)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
