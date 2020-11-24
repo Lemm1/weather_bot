@@ -33,7 +33,7 @@ def start(bot, update):
     update.message.reply_text('Welcome, to get instructions on how to use bot type /help')
 
 
-def help(bot, update):
+def bot_help(bot, update):
     """Send a message when the command /help is issued."""
     update.message.reply_text(f'''Your measuring system is set to {MEASURING_SYSTEM["Name"]}
 Available measuring systems:
@@ -117,7 +117,7 @@ def main(use_webhooks):
 
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help))
+    dp.add_handler(CommandHandler("help", bot_help))
     dp.add_handler(CommandHandler("weather", weather, pass_args=True))
     dp.add_handler(CommandHandler("measuring", set_measuring, pass_args=True))
 
