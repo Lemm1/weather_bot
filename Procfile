@@ -1,0 +1,1 @@
+web: pipenv run python weather.py
