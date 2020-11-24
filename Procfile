@@ -1,1 +1,1 @@
-web: pipenv run python weather.py
+web: python weather.py
